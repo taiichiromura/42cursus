@@ -1,0 +1,31 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ft_isalnum.c                                       :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: tmura <tmura@student.42tokyo.jp>           +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/04 21:23:46 by tmura             #+#    #+#             */
+/*   Updated: 2025/05/05 18:36:35 by tmura            ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "libft.h"
+
+int	ft_isalnum(int c)
+{
+	if (ft_isdigit(c) || ft_isalpha(c))
+		return (8);
+	return (0);
+}
+/*
+#include <ctype.h>
+#include <stdio.h>
+
+int main() {
+	printf("%d\n",isalnum('A'));
+	printf("%d\n",isalnum('#'));
+	printf("%d\n",ft_isalnum('A'));
+	printf("%d\n",ft_isalnum('#'));
+}
+*/

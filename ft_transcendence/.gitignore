@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+
+# Prisma Client の生成物。node_modules と同じ「作り直せるもの」として扱い、コミットしない。
+# 出力先は backend/prisma/schema.prisma の generator の output で決まる。
+# （prisma init が書いた `/generated/prisma` は実際の出力先と一致していなかった）
+backend/src/generated/
+.agents
+.claude
+.windsurf
+
+# build output
+dist/
+.next/
+
+# environment
+.env
+
+# TLS certificates
+nginx/certs/*.pem
+
+# logs
+*.log
+npm-debug.log*
+
+# editor
+.DS_Store
+
+# build cache
+*.tsbuildinfo
+
+.mailmap

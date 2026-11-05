@@ -1,0 +1,120 @@
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  ConnectedSocket,
+  MessageBody,
+  OnGatewayInit,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { AuthService } from '../auth/auth.service';
+import { PresenceService } from './presence.service';
+import { PRESENCE_CONNECT_ERRORS, PRESENCE_EVENTS } from './presence.events';
+
+/** 接続後にsocketへ保持する情報 */
+interface SocketData {
+  userId?: number;
+}
+
+/**
+ * オンライン状態と、フレンド申請通知を配信する名前空間。
+ * nginxは `location /socket.io/` でsocket.ioを一括プロキシしており、
+ * 名前空間は同一パス上を通るためnginx側の設定追加は不要。
+ */
+@WebSocketGateway({
+  namespace: '/presence',
+  cors: { origin: '*' },
+  /*
+   * 既定(25s/20s)より短くして切断検知を速める。
+   * この接続の有無が「ログイン中か」の判定そのものなので（auth.service.ts の login）、
+   * ブラウザのクラッシュや回線断でFINが届かない場合の解放待ちを最大約18秒に抑える。
+   * これ以上短くすると不安定な回線でフレンドのオンライン表示がちらつきやすくなる。
+   *
+   * 注意: engine.ioのインスタンスは全ゲートウェイで1つなので、この設定は
+   * `/ito` 名前空間にも効く（itoの切断検知＝ゲーム一時停止も同じだけ速くなる）。
+   * 名前空間ごとには分けられない。
+   */
+  pingInterval: 10000,
+  pingTimeout: 8000,
+})
+export class PresenceGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
+  @WebSocketServer()
+  server: Server;
+
+  constructor(
+    private readonly presenceService: PresenceService,
+    private readonly authService: AuthService,
+  ) {}
+
+  afterInit(server: Server) {
+    this.presenceService.setServer(server);
+
+    /*
+     * 接続の可否はここで決める。handleConnectionでdisconnect()すると理由を
+     * クライアントへ渡せない（emitした直後にcloseすると取りこぼす）が、
+     * ミドルウェアがErrorを返せば connect_error の message として確実に届く。
+     * socket.ioのクライアントはミドルウェア起因のエラーでは自動再接続しないので、
+     * 拒否した接続がリトライで殴り続けることもない。
+     */
+    server.use((client, next) => {
+      const userId = this.authService.userIdFromToken(
+        client.handshake.auth?.token,
+      );
+      if (userId === undefined) {
+        next(new Error(PRESENCE_CONNECT_ERRORS.UNAUTHORIZED));
+        return;
+      }
+
+      /*
+       * 同一アカウントの接続は1つまで（先勝ち）。
+       * ログイン時にも同じ判定をしているが（auth.service.ts）、
+       * localStorageにトークンが残っている端末からの再訪はログインを通らないため、
+       * そちらだけでは同時接続を防げない。接続そのものを入口にして塞ぐ。
+       *
+       * リロードやタブを閉じる操作は切断が即座に通知されるので影響しない。
+       * クラッシュ・回線断・スリープのような異常切断の後だけ、
+       * pingTimeoutでフラグが下りるまで（最大約18秒）繋ぎ直せない。
+       */
+      if (this.presenceService.isOnline(userId)) {
+        next(new Error(PRESENCE_CONNECT_ERRORS.DUPLICATE_SESSION));
+        return;
+      }
+
+      // handleDisconnectではhandshakeを再検証できないため、解決したuserIdをソケットに持たせる
+      (client.data as SocketData).userId = userId;
+      next();
+    });
+  }
+
+  async handleConnection(client: Socket) {
+    // ミドルウェアを通った接続だけがここへ来る
+    const { userId } = client.data as SocketData;
+    if (userId === undefined) return;
+
+    await this.presenceService.handleConnect(userId, client.id);
+  }
+
+  async handleDisconnect(client: Socket) {
+    const { userId } = client.data as SocketData;
+    if (userId === undefined) return;
+
+    await this.presenceService.handleDisconnect(userId, client.id);
+  }
+
+  @SubscribeMessage(PRESENCE_EVENTS.DM_TYPING)
+  handleTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { toUserId: number; isTyping: boolean },
+  ) {
+    const { userId } = client.data as SocketData;
+    if (!userId || typeof data?.toUserId !== 'number') return;
+    this.presenceService.emitToUser(data.toUserId, PRESENCE_EVENTS.DM_TYPING, {
+      userId,
+      isTyping: !!data.isTyping,
+    });
+  }
+}

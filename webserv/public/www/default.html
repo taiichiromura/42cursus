@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Virtual Server Test</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #e3f2fd; /* 薄い青 */
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: #1e88e5; }
+        .status {
+            display: inline-block;
+            background-color: #4caf50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 default Server 接続成功！</h1>
+        <p>このファイルは <code>./public/www/default.html</code> から読み込まれています。</p>
+        <p>名前ベースのバーチャルホスト（<code>server_name virtual_server;</code>）が正しく機能しています！</p>
+        <div class="status">HTTP 200 OK</div>
+    </div>
+</body>
+</html>
