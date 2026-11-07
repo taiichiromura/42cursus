@@ -2,8 +2,6 @@
 
 My project work from the [42 Tokyo](https://42tokyo.jp/) Common Core — low-level systems programming in **C and C++**, built from scratch with no external libraries and peer-evaluated.
 
-> **Note:** Subject files (problem statements) are not included — they are 42's copyrighted material. This repository contains only my own source code.
-
 ## About 42
 
 42 is a project-based, peer-to-peer engineering school with no lectures and no teachers. The Common Core covers computer fundamentals — memory, processes, sockets, algorithms, graphics, OOP, concurrency, networking — by implementing them from the ground up in C/C++.
